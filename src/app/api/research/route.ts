@@ -34,7 +34,9 @@ export async function POST(req: Request) {
     return NextResponse.json({
       ...result.finalRecommendation,
       rawMetrics: result.rawMetrics,
-      chartData: result.chartData
+      chartData: result.chartData,
+      newsItems: result.newsItems || [],
+      peers: result.peers || [],
     }, { status: 200 });
 
   } catch (error) {
