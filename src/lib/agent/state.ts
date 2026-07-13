@@ -48,6 +48,9 @@ export interface ResearchState {
     currency: string;
     sector: string | null;
     industry: string | null;
+    targetMean?: number | null;
+    targetLow?: number | null;
+    targetHigh?: number | null;
   };
   chartData?: Array<{ date: string; price: number }>;
   newsItems?: NewsItem[];

@@ -108,6 +108,53 @@ const AnalystRating = ({ rating }: { rating: string }) => {
   );
 };
 
+// ─── Analyst Target price estimates ───────────────────────────────────────────
+const TargetPriceBar = ({ low, mean, high, current, currency }: { low: number; mean: number; high: number; current: number; currency: string }) => {
+  const range = high - low;
+  const pctCurrent = Math.min(100, Math.max(0, ((current - low) / range) * 100));
+  const pctMean = Math.min(100, Math.max(0, ((mean - low) / range) * 100));
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between text-xs text-neutral-500">
+        <span>Low: {fmtPrice(low, currency)}</span>
+        <span className="text-neutral-300 font-semibold">12-Month Price Target Consensus</span>
+        <span>High: {fmtPrice(high, currency)}</span>
+      </div>
+      <div className="relative h-2.5 bg-neutral-800 rounded-full overflow-visible mt-6 mb-3">
+        {/* Track */}
+        <div className="absolute inset-0 rounded-full bg-gradient-to-r from-indigo-500/20 via-indigo-500/60 to-purple-500/20" />
+        
+        {/* Mean Indicator line */}
+        <div 
+          className="absolute top-0 bottom-0 w-0.5 bg-yellow-400 z-10"
+          style={{ left: `${pctMean}%` }}
+        />
+        <span 
+          className="absolute text-[10px] text-yellow-400 font-bold -top-5 -translate-x-1/2 whitespace-nowrap"
+          style={{ left: `${pctMean}%` }}
+        >
+          Mean Target: {fmtPrice(mean, currency)}
+        </span>
+
+        {/* Current Price Dot */}
+        <div
+          className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white border-2 border-indigo-600 rounded-full shadow-lg shadow-indigo-500/30 z-20"
+          style={{ left: `calc(${pctCurrent}% - 8px)` }}
+        />
+      </div>
+      <p className="text-center text-xs text-neutral-500 mt-2">
+        Current price of <span className="text-white font-semibold">{fmtPrice(current, currency)}</span> is {' '}
+        {current < mean ? (
+          <span className="text-emerald-400 font-bold">{((mean - current) / current * 100).toFixed(1)}% below</span>
+        ) : (
+          <span className="text-rose-400 font-bold">{((current - mean) / mean * 100).toFixed(1)}% above</span>
+        )}
+        {' '} the analyst consensus target mean ({fmtPrice(mean, currency)}).
+      </p>
+    </div>
+  );
+};
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function ResearchPage({ params }: { params: Promise<{ ticker: string }> }) {
   const { ticker } = use(params);
@@ -406,6 +453,13 @@ export default function ResearchPage({ params }: { params: Promise<{ ticker: str
                   {m && m.high52 > 0 && (
                     <div className="mt-5 pt-5 border-t border-white/5">
                       <RangeBar low={m.low52} high={m.high52} current={m.price} currency={currency} />
+                    </div>
+                  )}
+
+                  {/* Target Price Consensus Bar */}
+                  {m && m.targetMean && m.targetLow && m.targetHigh && (
+                    <div className="mt-8 pt-6 border-t border-white/5">
+                      <TargetPriceBar low={m.targetLow} mean={m.targetMean} high={m.targetHigh} current={m.price} currency={currency} />
                     </div>
                   )}
                 </div>

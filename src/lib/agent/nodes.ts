@@ -91,6 +91,9 @@ export const fetchResearchNode = async (state: ResearchState): Promise<Partial<R
       currency: quote.currency || "USD",
       sector: (quote as any).sector || null,
       industry: (quote as any).industry || null,
+      targetMean: (quote as any).targetMeanPrice || null,
+      targetLow: (quote as any).targetLowPrice || null,
+      targetHigh: (quote as any).targetHighPrice || null,
     };
 
     // 5. Format the data for the decision logic

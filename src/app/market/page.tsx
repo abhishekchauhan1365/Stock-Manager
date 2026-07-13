@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Globe, RefreshCw, BarChart2, Activity } from 'lucide-react';
+import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Globe, RefreshCw, BarChart2, Activity, Newspaper } from 'lucide-react';
 import Link from 'next/link';
 
 type Stock = {
@@ -27,16 +27,30 @@ export default function MarketPage() {
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState('');
   const [filter, setFilter] = useState<'all' | 'gainers' | 'losers'>('all');
+  const [news, setNews] = useState<any[]>([]);
+  const [newsLoading, setNewsLoading] = useState(true);
 
   const load = async () => {
     setLoading(true);
+    setNewsLoading(true);
     try {
       const res = await fetch('/api/market');
       const data = await res.json();
       setStocks(data.stocks || []);
       setLastUpdated(new Date().toLocaleTimeString());
-    } catch {}
+    } catch (e) {
+      console.error(e);
+    }
     setLoading(false);
+
+    try {
+      const newsRes = await fetch('/api/news');
+      const newsData = await newsRes.json();
+      setNews(newsData.news || []);
+    } catch (e) {
+      console.error(e);
+    }
+    setNewsLoading(false);
   };
 
   useEffect(() => { load(); }, []);
@@ -50,11 +64,11 @@ export default function MarketPage() {
   const totalLosers  = stocks.filter(s => s.changePercent < 0).length;
 
   return (
-    <main className="min-h-screen bg-black text-neutral-50 font-sans">
+    <main className="min-h-screen bg-[#090912] text-neutral-50 font-sans">
       {/* Background */}
       <div className="fixed inset-0 -z-10 pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-indigo-700/10 rounded-full blur-[140px]" />
-        <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-purple-700/10 rounded-full blur-[120px]" />
+        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-indigo-700/5 rounded-full blur-[140px]" />
+        <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-purple-700/5 rounded-full blur-[120px]" />
       </div>
 
       {/* Navbar */}
@@ -108,78 +122,130 @@ export default function MarketPage() {
           ))}
         </div>
 
-        {/* Filter Tabs */}
-        <div className="flex gap-2 mb-8">
-          {(['all','gainers','losers'] as const).map(f => (
-            <button key={f} onClick={() => setFilter(f)}
-              className={`px-5 py-2 rounded-full text-sm font-semibold capitalize transition-all ${filter === f ? 'bg-indigo-600 text-white' : 'bg-white/5 text-neutral-400 hover:bg-white/10'}`}>
-              {f}
-            </button>
-          ))}
-        </div>
+        {/* Grid Layout for Stocks Table (Left) + Market News (Right) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          
+          {/* Table Container (Col Span 2) */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Filter Tabs */}
+            <div className="flex gap-2">
+              {(['all','gainers','losers'] as const).map(f => (
+                <button key={f} onClick={() => setFilter(f)}
+                  className={`px-5 py-2 rounded-full text-sm font-semibold capitalize transition-all ${filter === f ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'bg-white/5 text-neutral-400 hover:bg-white/10'}`}>
+                  {f}
+                </button>
+              ))}
+            </div>
 
-        {/* Stocks Table */}
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-32 gap-4">
-            <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-            <p className="text-neutral-400 animate-pulse">Fetching live market data...</p>
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-32 gap-4 rounded-3xl bg-neutral-900/10 border border-white/5">
+                <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                <p className="text-neutral-400 animate-pulse">Fetching live market data...</p>
+              </div>
+            ) : (
+              <div className="rounded-3xl bg-neutral-900/30 border border-white/5 overflow-hidden backdrop-blur-sm">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-white/5 text-left">
+                        {['Company','Price','Change','Market Cap','Volume','P/E','Exchange','Analyst'].map(h => (
+                          <th key={h} className="px-6 py-4 text-xs font-semibold text-neutral-500 uppercase tracking-widest">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtered.map((s, i) => (
+                        <motion.tr
+                          key={s.ticker}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: i * 0.03 }}
+                          className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors group"
+                        >
+                          <td className="px-6 py-4">
+                            <Link href={`/research/${s.ticker}`} className="flex items-center gap-3 group-hover:text-indigo-400 transition-colors">
+                              <div className="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-xs font-bold text-indigo-400">
+                                {s.ticker.replace('.NS','').replace('.TO','').slice(0,2)}
+                              </div>
+                              <div>
+                                <p className="font-bold text-white text-sm">{s.ticker}</p>
+                                <p className="text-neutral-500 text-xs truncate max-w-[140px]">{s.name}</p>
+                              </div>
+                            </Link>
+                          </td>
+                          <td className="px-6 py-4 font-bold text-white">{fmtPrice(s.price, s.currency)}</td>
+                          <td className="px-6 py-4">
+                            <div className={`flex items-center gap-1 font-semibold ${s.changePercent >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                              {s.changePercent >= 0 ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
+                              {Math.abs(s.changePercent).toFixed(2)}%
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-neutral-300">${fmt(s.marketCap)}</td>
+                          <td className="px-6 py-4 text-neutral-300">{fmt(s.volume)}</td>
+                          <td className="px-6 py-4 text-neutral-300">{s.pe ?? '—'}</td>
+                          <td className="px-6 py-4 text-neutral-500 text-sm">{s.exchange}</td>
+                          <td className="px-6 py-4">
+                            {s.rating ? (
+                              <span className="px-2 py-1 rounded-lg bg-indigo-500/10 text-indigo-400 text-xs font-medium border border-indigo-500/20">
+                                {s.rating}
+                              </span>
+                            ) : <span className="text-neutral-600">—</span>}
+                          </td>
+                        </motion.tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="rounded-3xl bg-neutral-900/30 border border-white/5 overflow-hidden backdrop-blur-sm">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-white/5 text-left">
-                    {['Company','Price','Change','Market Cap','Volume','P/E','Exchange','Analyst'].map(h => (
-                      <th key={h} className="px-6 py-4 text-xs font-semibold text-neutral-500 uppercase tracking-widest">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((s, i) => (
-                    <motion.tr
-                      key={s.ticker}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.03 }}
-                      className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors group"
+
+          {/* Global Market News Feed Sidebar (Col Span 1) */}
+          <div className="lg:col-span-1">
+            <div className="p-6 rounded-3xl border border-white/8 bg-neutral-900/20 backdrop-blur-xl space-y-6">
+              <h2 className="text-white font-bold text-lg flex items-center gap-2 border-b border-white/5 pb-4">
+                <Newspaper className="w-5 h-5 text-indigo-400" /> Global Finance News
+              </h2>
+
+              {newsLoading ? (
+                <div className="py-20 flex flex-col items-center justify-center gap-3">
+                  <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                  <p className="text-neutral-500 text-xs animate-pulse">Fetching global stories...</p>
+                </div>
+              ) : news.length > 0 ? (
+                <div className="space-y-4 divide-y divide-white/[0.04] max-h-[640px] overflow-y-auto pr-1">
+                  {news.map((item, i) => (
+                    <motion.a
+                      key={i}
+                      href={item.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      initial={{ opacity: 0, x: 10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                      className={`block pt-4 ${i === 0 ? 'pt-0' : ''} group`}
                     >
-                      <td className="px-6 py-4">
-                        <Link href={`/research/${s.ticker}`} className="flex items-center gap-3 group-hover:text-indigo-400 transition-colors">
-                          <div className="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-xs font-bold text-indigo-400">
-                            {s.ticker.replace('.NS','').replace('.TO','').slice(0,2)}
-                          </div>
-                          <div>
-                            <p className="font-bold text-white text-sm">{s.ticker}</p>
-                            <p className="text-neutral-500 text-xs truncate max-w-[140px]">{s.name}</p>
-                          </div>
-                        </Link>
-                      </td>
-                      <td className="px-6 py-4 font-bold text-white">{fmtPrice(s.price, s.currency)}</td>
-                      <td className="px-6 py-4">
-                        <div className={`flex items-center gap-1 font-semibold ${s.changePercent >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                          {s.changePercent >= 0 ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
-                          {Math.abs(s.changePercent).toFixed(2)}%
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-neutral-300">${fmt(s.marketCap)}</td>
-                      <td className="px-6 py-4 text-neutral-300">{fmt(s.volume)}</td>
-                      <td className="px-6 py-4 text-neutral-300">{s.pe ?? '—'}</td>
-                      <td className="px-6 py-4 text-neutral-500 text-sm">{s.exchange}</td>
-                      <td className="px-6 py-4">
-                        {s.rating ? (
-                          <span className="px-2 py-1 rounded-lg bg-indigo-500/10 text-indigo-400 text-xs font-medium border border-indigo-500/20">
-                            {s.rating}
-                          </span>
-                        ) : <span className="text-neutral-600">—</span>}
-                      </td>
-                    </motion.tr>
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <span className="text-[10px] font-bold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/25 uppercase shrink-0">
+                          {item.publisher}
+                        </span>
+                        <span className="text-[10px] text-neutral-600">
+                          {new Date(item.publishedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <p className="text-sm font-semibold text-neutral-300 group-hover:text-white transition-colors line-clamp-2 leading-snug">
+                        {item.title}
+                      </p>
+                    </motion.a>
                   ))}
-                </tbody>
-              </table>
+                </div>
+              ) : (
+                <p className="text-neutral-600 text-sm text-center py-12">No current finance news available.</p>
+              )}
             </div>
           </div>
-        )}
+
+        </div>
       </div>
 
       {/* Footer */}
