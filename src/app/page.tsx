@@ -169,12 +169,45 @@ export default function Home() {
   const [error, setError] = useState('');
   const [isFocused, setIsFocused] = useState(false);
 
+  // Suggestions states
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+
+  // Debounced search suggestions fetcher
+  useEffect(() => {
+    const q = company.trim();
+    if (q.length < 2) {
+      setSuggestions([]);
+      setSuggestionsLoading(false);
+      return;
+    }
+
+    setSuggestionsLoading(true);
+    const delayDebounce = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+        const data = await res.json();
+        setSuggestions(data.quotes || []);
+        setActiveSuggestionIndex(-1);
+      } catch (err) {
+        console.error("Suggestions error", err);
+      } finally {
+        setSuggestionsLoading(false);
+      }
+    }, 250);
+
+    return () => clearTimeout(delayDebounce);
+  }, [company]);
+
   const handleResearch = async (e: React.FormEvent) => {
     e.preventDefault();
     const q = company.trim();
     if (!q) return;
     setLoading(true);
     setError('');
+    setShowSuggestions(false);
     try {
       // Resolve the ticker first so we can route to /research/[ticker]
       const res = await fetch('/api/research', {
@@ -195,6 +228,32 @@ export default function Home() {
     } catch (err: any) {
       setError(err.message);
       setLoading(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!showSuggestions) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveSuggestionIndex((prev) => 
+        prev === suggestions.length - 1 ? 0 : prev + 1
+      );
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveSuggestionIndex((prev) => 
+        prev <= 0 ? suggestions.length - 1 : prev - 1
+      );
+    } else if (e.key === 'Escape') {
+      setShowSuggestions(false);
+    } else if (e.key === 'Enter') {
+      if (activeSuggestionIndex >= 0 && activeSuggestionIndex < suggestions.length) {
+        e.preventDefault();
+        const selectedTicker = suggestions[activeSuggestionIndex].ticker;
+        setCompany(selectedTicker);
+        setShowSuggestions(false);
+        router.push(`/research/${selectedTicker}`);
+      }
     }
   };
 
@@ -303,12 +362,14 @@ export default function Home() {
               <input
                 type="text"
                 value={company}
-                onFocus={() => setIsFocused(true)}
-                onBlur={() => setIsFocused(false)}
+                onFocus={() => { setIsFocused(true); setShowSuggestions(true); }}
+                onBlur={() => setTimeout(() => { setIsFocused(false); setShowSuggestions(false); }, 200)}
                 onChange={(e) => setCompany(e.target.value)}
-                placeholder="Enter a company or ticker (AAPL, RELIANCE.NS, TSLA)..."
-                className="w-full bg-neutral-900/60 backdrop-blur-2xl border border-white/10 hover:border-white/20 rounded-3xl py-6 pl-14 pr-40 text-xl font-medium focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-all placeholder:text-neutral-600 shadow-2xl shadow-black/60"
+                onKeyDown={handleKeyDown}
+                placeholder="Search stocks by name or ticker (e.g. AAPL, RELIANCE.NS, TSLA)..."
+                className="w-full bg-neutral-900/70 backdrop-blur-2xl border border-white/10 hover:border-white/20 rounded-3xl py-6 pl-14 pr-40 text-xl font-medium focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-all placeholder:text-neutral-600 shadow-2xl shadow-black/60 text-white"
                 disabled={loading}
+                autoComplete="off"
               />
               <button
                 type="submit"
@@ -326,6 +387,104 @@ export default function Home() {
               </button>
             </div>
           </form>
+
+          {/* Autocomplete Dropdown */}
+          <AnimatePresence>
+            {showSuggestions && (isFocused || company.length > 0) && (
+              <motion.div
+                initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.98 }}
+                transition={{ duration: 0.2 }}
+                className="absolute top-full left-0 right-0 mt-3 bg-[#0d0d18]/95 border border-white/10 rounded-2xl shadow-2xl backdrop-blur-2xl overflow-hidden z-50 max-h-[380px] flex flex-col"
+              >
+                {/* Trending section when input is empty */}
+                {company.trim().length === 0 && (
+                  <div className="p-5">
+                    <p className="text-neutral-500 text-xs font-semibold uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                      <Star className="w-3.5 h-3.5 text-indigo-400" /> Trending Stocks
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { ticker: 'AAPL', label: 'Apple' },
+                        { ticker: 'NVDA', label: 'NVIDIA' },
+                        { ticker: 'TSLA', label: 'Tesla' },
+                        { ticker: 'RELIANCE.NS', label: 'Reliance' },
+                        { ticker: 'TCS.NS', label: 'TCS' },
+                        { ticker: 'MSFT', label: 'Microsoft' }
+                      ].map((s) => (
+                        <button
+                          key={s.ticker}
+                          type="button"
+                          onMouseDown={() => {
+                            setCompany(s.ticker);
+                            router.push(`/research/${s.ticker}`);
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-2 bg-white/5 hover:bg-indigo-600/20 hover:text-indigo-400 border border-white/5 hover:border-indigo-500/30 rounded-xl text-sm font-semibold transition-all text-neutral-300"
+                        >
+                          <TrendingUp className="w-3.5 h-3.5 shrink-0" />
+                          {s.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Live matched results */}
+                {company.trim().length > 0 && (
+                  <div className="flex-1 overflow-hidden flex flex-col">
+                    {suggestionsLoading && (
+                      <div className="p-5 flex items-center justify-center gap-3 text-neutral-400 text-sm">
+                        <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                        <span>Searching global markets...</span>
+                      </div>
+                    )}
+
+                    {!suggestionsLoading && suggestions.length === 0 && company.trim().length >= 2 && (
+                      <div className="p-5 text-center text-neutral-500 text-sm">
+                        No listings found matching &quot;<span className="text-neutral-300 font-semibold">{company}</span>&quot;
+                      </div>
+                    )}
+
+                    {!suggestionsLoading && suggestions.length > 0 && (
+                      <div className="overflow-y-auto divide-y divide-white/[0.04] flex-1">
+                        {suggestions.map((item, index) => (
+                          <div
+                            key={item.ticker}
+                            onMouseDown={() => {
+                              setCompany(item.ticker);
+                              router.push(`/research/${item.ticker}`);
+                            }}
+                            onMouseEnter={() => setActiveSuggestionIndex(index)}
+                            className={`flex items-center justify-between px-5 py-4 cursor-pointer transition-all ${
+                              index === activeSuggestionIndex ? 'bg-indigo-600/20 text-white' : 'hover:bg-white/[0.02] text-neutral-300'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className={`px-2.5 py-1 rounded-lg text-xs font-black border uppercase tracking-wider shrink-0 ${
+                                index === activeSuggestionIndex 
+                                  ? 'bg-indigo-500/20 border-indigo-400/40 text-indigo-300' 
+                                  : 'bg-white/5 border-white/10 text-neutral-400'
+                              }`}>
+                                {item.ticker}
+                              </div>
+                              <div className="truncate">
+                                <p className="font-bold text-sm text-white truncate">{item.name}</p>
+                                <p className="text-neutral-500 text-xs tracking-wide uppercase mt-0.5">{item.exchange} · {item.type}</p>
+                              </div>
+                            </div>
+                            <ChevronRight className={`w-4 h-4 transition-transform duration-300 shrink-0 ${
+                              index === activeSuggestionIndex ? 'translate-x-1 text-indigo-400' : 'text-neutral-600'
+                            }`} />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
 
         {/* ── Stats Row ─────────────────────────────────────────────── */}
