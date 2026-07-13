@@ -107,15 +107,28 @@ export const fetchResearchNode = async (state: ResearchState): Promise<Partial<R
       MARKET CAP: $${quote.marketCap}
     `;
 
+    const parsePublishTime = (time: any): string => {
+      if (!time) return new Date().toISOString();
+      if (time instanceof Date) return time.toISOString();
+      if (typeof time === 'number') {
+        if (time < 1e11) return new Date(time * 1000).toISOString();
+        return new Date(time).toISOString();
+      }
+      try {
+        const d = new Date(time);
+        return isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+      } catch {
+        return new Date().toISOString();
+      }
+    };
+
     // 6. Fetch recent news (up to 6 articles)
     const newsResult = await yahooFinance.search(ticker, { newsCount: 6 });
     const newsItems = newsResult.news.slice(0, 6).map((n: any) => ({
       title: n.title || '',
       publisher: n.publisher || 'Unknown',
       link: n.link || '#',
-      publishedAt: n.providerPublishTime
-        ? new Date(n.providerPublishTime * 1000).toISOString()
-        : new Date().toISOString(),
+      publishedAt: parsePublishTime(n.providerPublishTime),
     }));
 
     // 7. Fetch peer comparison stocks
