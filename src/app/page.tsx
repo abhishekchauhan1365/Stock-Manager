@@ -211,9 +211,8 @@ export default function Home() {
           NexusAI
         </div>
         <div className="hidden md:flex items-center gap-8 text-sm font-medium text-neutral-400">
-          <span className="hover:text-white transition-colors cursor-pointer">Platform</span>
-          <span className="hover:text-white transition-colors cursor-pointer">Models</span>
-          <span className="hover:text-white transition-colors cursor-pointer">Enterprise</span>
+          <Link href="/market" className="hover:text-white transition-colors">Market</Link>
+          <Link href="/dashboard" className="hover:text-white transition-colors">Dashboard</Link>
           <Link href="/login" className="px-5 py-2.5 rounded-full border border-white/10 hover:bg-white/5 text-white transition-colors font-medium">
             Sign In
           </Link>
@@ -535,7 +534,11 @@ export default function Home() {
                     <div className="text-right">
                       <p className="text-neutral-500 text-xs uppercase tracking-widest mb-1">Current Price</p>
                       <p className="text-5xl font-black text-white tracking-tighter">
-                        ${result.rawMetrics?.price?.toFixed(2) ?? '—'}
+                        {result.rawMetrics?.currency === 'INR' ? '₹' : '$'}{result.rawMetrics?.price?.toFixed(2) ?? '—'}
+                      </p>
+                      <p className={`text-sm font-semibold mt-1 flex items-center justify-end gap-1 ${(result.rawMetrics?.changePercent ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {(result.rawMetrics?.changePercent ?? 0) >= 0 ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
+                        {Math.abs(result.rawMetrics?.changePercent ?? 0).toFixed(2)}% today
                       </p>
                     </div>
                   </div>
@@ -624,10 +627,10 @@ export default function Home() {
             NexusAI
           </div>
           <div className="flex flex-wrap justify-center gap-8 text-sm text-neutral-500">
-            <span className="hover:text-white transition-colors cursor-pointer">About</span>
-            <span className="hover:text-white transition-colors cursor-pointer">Docs</span>
+            <Link href="/market" className="hover:text-white transition-colors">Market</Link>
+            <Link href="/dashboard" className="hover:text-white transition-colors">Dashboard</Link>
+            <Link href="/login" className="hover:text-white transition-colors">Sign In</Link>
             <span className="hover:text-white transition-colors cursor-pointer">Privacy</span>
-            <span className="hover:text-white transition-colors cursor-pointer">Terms</span>
           </div>
           <p className="text-sm text-neutral-600">© 2026 NexusAI. All rights reserved.</p>
         </div>

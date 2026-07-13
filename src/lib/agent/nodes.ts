@@ -60,7 +60,22 @@ export const fetchResearchNode = async (state: ResearchState): Promise<Partial<R
       marketCap: quote.marketCap || 0,
       rating: quote.averageAnalystRating || "N/A",
       ticker,
-      name
+      name,
+      // Enhanced metrics
+      volume: quote.regularMarketVolume || 0,
+      avgVolume: quote.averageDailyVolume3Month || 0,
+      eps: quote.epsTrailingTwelveMonths || null,
+      beta: quote.beta || null,
+      dividendYield: quote.dividendYield ? +(quote.dividendYield * 100).toFixed(2) : null,
+      dayHigh: quote.regularMarketDayHigh || 0,
+      dayLow: quote.regularMarketDayLow || 0,
+      previousClose: quote.regularMarketPreviousClose || 0,
+      change: quote.regularMarketChange ? +quote.regularMarketChange.toFixed(2) : 0,
+      changePercent: quote.regularMarketChangePercent ? +quote.regularMarketChangePercent.toFixed(2) : 0,
+      exchange: quote.fullExchangeName || quote.exchange || "N/A",
+      currency: quote.currency || "USD",
+      sector: (quote as any).sector || null,
+      industry: (quote as any).industry || null,
     };
 
     // 5. Format the data for the fallback logic
