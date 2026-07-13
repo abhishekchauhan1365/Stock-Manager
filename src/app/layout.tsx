@@ -13,6 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 import { Providers } from "./providers";
+import Copilot from "@/components/Copilot";
 
 export const metadata: Metadata = {
   title: "NexusAI | Institutional Investment Analyst",
@@ -30,7 +31,10 @@ export default function RootLayout({
       className={`${outfit.variable} ${geistMono.variable} h-full antialiased dark`}
     >
       <body className="min-h-full flex flex-col">
-        <Providers>{children}</Providers>
+        <Providers>
+          {children}
+          <Copilot />
+        </Providers>
       </body>
     </html>
   );
