@@ -168,7 +168,7 @@ export default function ResearchPage({ params }: { params: Promise<{ ticker: str
             <Link href="/" className="hover:text-white transition-colors">Research</Link>
             <Link href="/market" className="hover:text-white transition-colors">Market</Link>
             <Link href="/dashboard" className="hover:text-white transition-colors">Dashboard</Link>
-            <Link href="/login" className="px-4 py-2 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white transition-colors">Sign In</Link>
+            <Link href="/about" className="hover:text-white transition-colors">About</Link>
           </div>
         </div>
       </nav>

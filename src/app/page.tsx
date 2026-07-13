@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Search, TrendingUp, AlertTriangle, Briefcase, Activity, CheckCircle2,
   ChevronRight, LineChart as LineChartIcon, ShieldCheck, Globe, Command,
@@ -162,32 +163,37 @@ const fadeUp = {
 };
 
 export default function Home() {
+  const router = useRouter();
   const [company, setCompany] = useState('');
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
   const [error, setError] = useState('');
-  const [hasSearched, setHasSearched] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
 
   const handleResearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!company.trim()) return;
-    setHasSearched(true);
+    const q = company.trim();
+    if (!q) return;
     setLoading(true);
     setError('');
-    setResult(null);
     try {
+      // Resolve the ticker first so we can route to /research/[ticker]
       const res = await fetch('/api/research', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ company }),
+        body: JSON.stringify({ company: q }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to fetch research');
-      setResult(data);
+      if (data.confidenceScore === 0) {
+        // Invalid ticker — show inline error
+        setError(data.reasoning || 'Could not find that stock. Try a ticker like AAPL or TCS.NS');
+        setLoading(false);
+        return;
+      }
+      const ticker = data.rawMetrics?.ticker || encodeURIComponent(q);
+      router.push(`/research/${ticker}`);
     } catch (err: any) {
       setError(err.message);
-    } finally {
       setLoading(false);
     }
   };
@@ -213,11 +219,9 @@ export default function Home() {
         <div className="hidden md:flex items-center gap-8 text-sm font-medium text-neutral-400">
           <Link href="/market" className="hover:text-white transition-colors">Market</Link>
           <Link href="/dashboard" className="hover:text-white transition-colors">Dashboard</Link>
-          <Link href="/login" className="px-5 py-2.5 rounded-full border border-white/10 hover:bg-white/5 text-white transition-colors font-medium">
-            Sign In
-          </Link>
-          <Link href="/login" className="px-5 py-2.5 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-colors shadow-lg shadow-indigo-500/20">
-            Get Started
+          <Link href="/about" className="hover:text-white transition-colors">About</Link>
+          <Link href="/market" className="px-5 py-2.5 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-colors shadow-lg shadow-indigo-500/20">
+            Explore Markets
           </Link>
         </div>
       </nav>
@@ -242,48 +246,46 @@ export default function Home() {
 
         {/* ── Hero ─────────────────────────────────────────────────── */}
         <AnimatePresence mode="wait">
-          {!hasSearched && (
-            <motion.section
-              key="hero"
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -40, filter: 'blur(12px)' }}
-              transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-              className="relative text-center pt-24 pb-16 space-y-6 rounded-3xl overflow-hidden"
+          <motion.section
+            key="hero"
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -40, filter: 'blur(12px)' }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            className="relative text-center pt-24 pb-16 space-y-6 rounded-3xl overflow-hidden"
+          >
+            {/* Cinematic Canvas Background */}
+            <div className="absolute inset-0 -z-10 rounded-3xl overflow-hidden">
+              <HeroCanvas />
+              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-black/20" />
+            </div>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.85 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.15 }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-neutral-300 text-sm font-medium backdrop-blur-md"
             >
-              {/* Cinematic Canvas Background */}
-              <div className="absolute inset-0 -z-10 rounded-3xl overflow-hidden">
-                <HeroCanvas />
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-black/20" />
-              </div>
-              <motion.div
-                initial={{ opacity: 0, scale: 0.85 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.15 }}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-neutral-300 text-sm font-medium backdrop-blur-md"
-              >
-                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                Live Market Engine Active
-              </motion.div>
+              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              Live Market Engine Active
+            </motion.div>
 
-              <h1 className="text-6xl md:text-[6.5rem] font-extrabold tracking-tighter leading-[1.05]">
-                Uncover Alpha<br />
-                <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent animate-gradient">
-                  with AI.
-                </span>
-              </h1>
+            <h1 className="text-6xl md:text-[6.5rem] font-extrabold tracking-tighter leading-[1.05]">
+              Uncover Alpha<br />
+              <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent animate-gradient">
+                with AI.
+              </span>
+            </h1>
 
-              <p className="text-neutral-400 max-w-2xl mx-auto text-xl leading-relaxed font-light">
-                NexusAI synthesizes live market data, valuation metrics, and institutional risk factors to generate definitive investment verdicts — in seconds.
-              </p>
+            <p className="text-neutral-400 max-w-2xl mx-auto text-xl leading-relaxed font-light">
+              NexusAI synthesizes live market data, valuation metrics, and institutional risk factors to generate definitive investment verdicts — in seconds.
+            </p>
 
-              <div className="flex items-center justify-center gap-4 pt-4 text-sm text-neutral-500">
-                <span className="flex items-center gap-1.5"><Star className="w-4 h-4 text-amber-400" /> Trusted by 10,000+ investors</span>
-                <span className="w-1 h-1 rounded-full bg-neutral-700" />
-                <span className="flex items-center gap-1.5"><Users className="w-4 h-4 text-indigo-400" /> 50,000+ analyses generated</span>
-              </div>
-            </motion.section>
-          )}
+            <div className="flex items-center justify-center gap-4 pt-4 text-sm text-neutral-500">
+              <span className="flex items-center gap-1.5"><Star className="w-4 h-4 text-amber-400" /> Trusted by 10,000+ investors</span>
+              <span className="w-1 h-1 rounded-full bg-neutral-700" />
+              <span className="flex items-center gap-1.5"><Users className="w-4 h-4 text-indigo-400" /> 50,000+ analyses generated</span>
+            </div>
+          </motion.section>
         </AnimatePresence>
 
         {/* ── Search Bar ───────────────────────────────────────────── */}
@@ -291,8 +293,8 @@ export default function Home() {
           layout
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: hasSearched ? 0 : 0.45, ease: [0.22, 1, 0.36, 1] }}
-          className={`relative max-w-3xl mx-auto z-50 ${!hasSearched ? '' : 'mt-8'}`}
+          transition={{ duration: 0.7, delay: 0.45, ease: [0.22, 1, 0.36, 1] }}
+          className="relative max-w-3xl mx-auto z-50"
         >
           <form onSubmit={handleResearch}>
             <div className={`relative flex items-center group transition-transform duration-300 ${isFocused ? 'scale-[1.015]' : 'scale-100'}`}>
@@ -327,148 +329,134 @@ export default function Home() {
         </motion.div>
 
         {/* ── Stats Row ─────────────────────────────────────────────── */}
-        <AnimatePresence mode="wait">
-          {!hasSearched && (
-            <motion.div
-              key="stats"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20, filter: 'blur(8px)' }}
-              transition={{ duration: 0.6, delay: 0.7 }}
-              className="grid grid-cols-2 md:grid-cols-4 gap-px bg-white/5 rounded-3xl overflow-hidden mt-16 border border-white/5"
-            >
-              {STATS.map((s) => (
-                <div key={s.label} className="bg-black/60 backdrop-blur-xl px-8 py-6 text-center">
-                  <p className="text-3xl font-extrabold text-white tracking-tight">{s.value}</p>
-                  <p className="text-neutral-500 text-sm mt-1">{s.label}</p>
-                </div>
-              ))}
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <motion.div
+          key="stats"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.7 }}
+          className="grid grid-cols-2 md:grid-cols-4 gap-px bg-white/5 rounded-3xl overflow-hidden mt-16 border border-white/5"
+        >
+          {STATS.map((s) => (
+            <div key={s.label} className="bg-black/60 backdrop-blur-xl px-8 py-6 text-center">
+              <p className="text-3xl font-extrabold text-white tracking-tight">{s.value}</p>
+              <p className="text-neutral-500 text-sm mt-1">{s.label}</p>
+            </div>
+          ))}
+        </motion.div>
 
         {/* ── How It Works ──────────────────────────────────────────── */}
-        <AnimatePresence mode="wait">
-          {!hasSearched && (
-            <motion.section
-              key="how"
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, filter: 'blur(8px)' }}
-              transition={{ duration: 0.7, delay: 0.85 }}
-              className="mt-28"
-            >
-              <div className="text-center mb-14">
-                <p className="text-indigo-400 font-semibold tracking-widest text-sm uppercase mb-3">How it works</p>
-                <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight">From ticker to verdict <br />in three steps.</h2>
-              </div>
+        <motion.section
+          key="how"
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.85 }}
+          className="mt-28"
+        >
+          <div className="text-center mb-14">
+            <p className="text-indigo-400 font-semibold tracking-widest text-sm uppercase mb-3">How it works</p>
+            <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight">From ticker to verdict <br />in three steps.</h2>
+          </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {STEPS.map((step, i) => (
-                  <motion.div
-                    key={step.number}
-                    custom={i}
-                    variants={fadeUp}
-                    initial="hidden"
-                    whileInView="visible"
-                    viewport={{ once: true }}
-                    className="relative p-8 rounded-3xl bg-neutral-900/30 border border-white/5 backdrop-blur-sm group hover:bg-neutral-900/50 transition-colors overflow-hidden"
-                  >
-                    <div className="absolute top-6 right-6 text-6xl font-black text-white/5 select-none group-hover:text-white/10 transition-colors">
-                      {step.number}
-                    </div>
-                    <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mb-6">
-                      {step.icon}
-                    </div>
-                    <h3 className="text-xl font-bold text-white mb-3">{step.title}</h3>
-                    <p className="text-neutral-400 leading-relaxed">{step.desc}</p>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.section>
-          )}
-        </AnimatePresence>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {STEPS.map((step, i) => (
+              <motion.div
+                key={step.number}
+                custom={i}
+                variants={fadeUp}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true }}
+                className="relative p-8 rounded-3xl bg-neutral-900/30 border border-white/5 backdrop-blur-sm group hover:bg-neutral-900/50 transition-colors overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="text-7xl font-black text-white/5 absolute top-4 right-6 pointer-events-none">{step.number}</div>
+                <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/15 flex items-center justify-center text-indigo-400 mb-6 relative z-10">{step.icon}</div>
+                <h3 className="text-xl font-bold text-white mb-3 relative z-10">{step.title}</h3>
+                <p className="text-neutral-400 leading-relaxed relative z-10">{step.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </motion.section>
 
         {/* ── Feature Bento Grid ────────────────────────────────────── */}
-        <AnimatePresence mode="wait">
-          {!hasSearched && (
-            <motion.section
-              key="features"
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, filter: 'blur(8px)' }}
-              transition={{ duration: 0.7, delay: 1.0 }}
-              className="mt-28"
-            >
-              <div className="text-center mb-14">
-                <p className="text-purple-400 font-semibold tracking-widest text-sm uppercase mb-3">Platform</p>
-                <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight">Built for institutional <br /> grade research.</h2>
-              </div>
+        <motion.section
+          key="features"
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 1.0 }}
+          className="mt-28"
+        >
+          <div className="text-center mb-14">
+            <p className="text-purple-400 font-semibold tracking-widest text-sm uppercase mb-3">Platform</p>
+            <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight">Built for institutional <br /> grade research.</h2>
+          </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {FEATURES.map((f, i) => (
-                  <motion.div
-                    key={f.title}
-                    custom={i}
-                    variants={fadeUp}
-                    initial="hidden"
-                    whileInView="visible"
-                    viewport={{ once: true }}
-                    className={`${f.span} p-8 rounded-3xl bg-gradient-to-br ${f.gradient || 'from-neutral-900/30 to-neutral-900/10'} border border-white/5 backdrop-blur-sm group hover:border-white/10 transition-colors`}
-                  >
-                    <div className="mb-6 group-hover:scale-110 transition-transform origin-left">{f.icon}</div>
-                    <h3 className="text-2xl font-bold text-white mb-3">{f.title}</h3>
-                    <p className="text-neutral-400 leading-relaxed text-[1.05rem]">{f.desc}</p>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.section>
-          )}
-        </AnimatePresence>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {FEATURES.map((f, i) => (
+              <motion.div
+                key={f.title}
+                custom={i}
+                variants={fadeUp}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true }}
+                className={`${f.span} p-8 rounded-3xl bg-gradient-to-br ${f.gradient || 'from-neutral-900/30 to-neutral-900/10'} border border-white/5 backdrop-blur-sm group hover:border-white/10 transition-colors`}
+              >
+                <div className="mb-6 group-hover:scale-110 transition-transform origin-left">{f.icon}</div>
+                <h3 className="text-2xl font-bold text-white mb-3">{f.title}</h3>
+                <p className="text-neutral-400 leading-relaxed text-[1.05rem]">{f.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </motion.section>
 
         {/* ── CTA Banner ────────────────────────────────────────────── */}
-        <AnimatePresence mode="wait">
-          {!hasSearched && (
-            <motion.section
-              key="cta"
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, filter: 'blur(8px)' }}
-              transition={{ duration: 0.7, delay: 1.1 }}
-              className="mt-28 rounded-3xl bg-gradient-to-r from-indigo-600/20 via-purple-600/20 to-indigo-600/20 border border-indigo-500/20 p-12 text-center relative overflow-hidden"
-            >
-              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-indigo-500/10 via-transparent to-transparent" />
-              <div className="relative z-10">
-                <BarChart2 className="w-12 h-12 text-indigo-400 mx-auto mb-6" />
-                <h2 className="text-4xl font-extrabold mb-4 tracking-tight">Ready to find your next trade?</h2>
-                <p className="text-neutral-400 text-lg mb-8 max-w-xl mx-auto">
-                  Type any ticker above and let NexusAI do the heavy lifting — live data, real metrics, instant verdict.
-                </p>
-                <button
-                  onClick={() => document.querySelector('input')?.focus()}
-                  className="inline-flex items-center gap-2 px-8 py-4 bg-white text-black font-bold rounded-2xl hover:bg-neutral-100 transition-all shadow-lg shadow-white/10 text-lg"
-                >
-                  Start Researching <ChevronRight className="w-5 h-5" />
-                </button>
-              </div>
-            </motion.section>
-          )}
-        </AnimatePresence>
+        <motion.section
+          key="cta"
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 1.1 }}
+          className="mt-28 rounded-3xl bg-gradient-to-r from-indigo-600/20 via-purple-600/20 to-indigo-600/20 border border-indigo-500/20 p-12 text-center relative overflow-hidden"
+        >
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-indigo-500/10 via-transparent to-transparent" />
+          <div className="relative z-10">
+            <BarChart2 className="w-12 h-12 text-indigo-400 mx-auto mb-6" />
+            <h2 className="text-4xl font-extrabold mb-4 tracking-tight">Ready to find your next trade?</h2>
+            <p className="text-neutral-400 text-lg mb-8 max-w-xl mx-auto">
+              Type any ticker above and let NexusAI do the heavy lifting — live data, real metrics, instant verdict.
+            </p>
+            <div className="flex flex-wrap justify-center gap-4">
+              <button
+                onClick={() => document.querySelector('input')?.focus()}
+                className="inline-flex items-center gap-2 px-8 py-4 bg-white text-black font-bold rounded-2xl hover:bg-neutral-100 transition-all shadow-lg shadow-white/10 text-lg"
+              >
+                Start Researching <ChevronRight className="w-5 h-5" />
+              </button>
+              <Link href="/market" className="inline-flex items-center gap-2 px-8 py-4 bg-indigo-600/20 border border-indigo-500/30 text-indigo-300 font-bold rounded-2xl hover:bg-indigo-600/30 transition-all text-lg">
+                View Market <ChevronRight className="w-5 h-5" />
+              </Link>
+            </div>
+          </div>
+        </motion.section>
 
         {/* ── Loading Spinner ───────────────────────────────────────── */}
         <AnimatePresence>
           {loading && (
             <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="flex flex-col items-center justify-center py-24 space-y-6"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm gap-6"
             >
               <div className="relative w-20 h-20">
                 <div className="absolute inset-0 border-4 border-indigo-500/20 rounded-full" />
                 <div className="absolute inset-0 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                <div className="absolute inset-2 border-4 border-purple-500/30 border-b-transparent rounded-full animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }} />
               </div>
-              <p className="text-xl font-medium text-neutral-400 animate-pulse">Synthesizing market data...</p>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-white">Analyzing {company}...</p>
+                <p className="text-neutral-400 mt-2">Aggregating market intelligence & financial models</p>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -487,134 +475,6 @@ export default function Home() {
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* ── Result Dashboard ──────────────────────────────────────── */}
-        <AnimatePresence>
-          {result && !loading && (
-            <motion.div
-              initial={{ opacity: 0, y: 50, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ duration: 0.8, type: 'spring', bounce: 0.25 }}
-              className="space-y-6 mt-10"
-            >
-              {/* Row 1: Verdict + Tear Sheet */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-
-                {/* Verdict */}
-                <div className="md:col-span-1 bg-neutral-900/40 border border-white/10 p-8 rounded-3xl flex flex-col justify-between relative overflow-hidden backdrop-blur-xl group">
-                  <div className="absolute -top-20 -right-20 w-44 h-44 bg-indigo-500/10 rounded-full blur-3xl group-hover:bg-indigo-500/20 transition-colors" />
-                  <div>
-                    <h3 className="text-neutral-500 font-semibold tracking-widest uppercase text-xs mb-6 flex items-center gap-2">
-                      <Activity className="w-4 h-4" /> Verdict
-                    </h3>
-                    <div className={`text-6xl font-black tracking-tighter ${result.recommendation === 'INVEST' ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      {result.recommendation}
-                    </div>
-                  </div>
-                  <div className="mt-10 pt-8 border-t border-white/5">
-                    <p className="text-neutral-500 text-xs uppercase tracking-widest mb-1">Confidence</p>
-                    <p className="text-4xl font-bold text-white">{result.confidenceScore}%</p>
-                  </div>
-                </div>
-
-                {/* Tear Sheet */}
-                <div className="md:col-span-3 bg-neutral-900/40 border border-white/10 p-8 rounded-3xl backdrop-blur-xl relative overflow-hidden">
-                  <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
-                    <Briefcase className="w-64 h-64" />
-                  </div>
-                  <div className="flex flex-wrap justify-between items-start gap-4 mb-10 relative z-10">
-                    <div>
-                      <h2 className="text-4xl font-black text-white mb-2 tracking-tight">
-                        {result.rawMetrics?.name || company}
-                      </h2>
-                      <span className="text-indigo-400 font-semibold tracking-widest bg-indigo-500/10 px-3 py-1 rounded-full text-sm border border-indigo-500/20">
-                        {result.rawMetrics?.ticker || '—'}
-                      </span>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-neutral-500 text-xs uppercase tracking-widest mb-1">Current Price</p>
-                      <p className="text-5xl font-black text-white tracking-tighter">
-                        {result.rawMetrics?.currency === 'INR' ? '₹' : '$'}{result.rawMetrics?.price?.toFixed(2) ?? '—'}
-                      </p>
-                      <p className={`text-sm font-semibold mt-1 flex items-center justify-end gap-1 ${(result.rawMetrics?.changePercent ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                        {(result.rawMetrics?.changePercent ?? 0) >= 0 ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
-                        {Math.abs(result.rawMetrics?.changePercent ?? 0).toFixed(2)}% today
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 relative z-10">
-                    {[
-                      { label: 'P/E Ratio', val: result.rawMetrics?.pe ? result.rawMetrics.pe.toFixed(2) : 'N/A' },
-                      { label: 'Analyst Rating', val: result.rawMetrics?.rating || 'N/A' },
-                      { label: '52W High', val: `$${result.rawMetrics?.high52?.toFixed(2) ?? '—'}` },
-                      { label: '52W Low', val: `$${result.rawMetrics?.low52?.toFixed(2) ?? '—'}` },
-                    ].map((m) => (
-                      <div key={m.label} className="p-5 rounded-2xl bg-black/40 border border-white/5">
-                        <p className="text-neutral-500 text-xs uppercase tracking-widest font-medium mb-2">{m.label}</p>
-                        <p className="text-2xl font-bold text-white capitalize">{m.val}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Row 2: Chart + Reasoning */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-
-                {/* Area Chart */}
-                <div className="md:col-span-2 bg-neutral-900/40 border border-white/10 p-8 rounded-3xl backdrop-blur-xl">
-                  <h3 className="text-neutral-500 font-semibold tracking-widest uppercase text-xs mb-6 flex items-center gap-2">
-                    <LineChartIcon className="w-4 h-4" /> 30-Day Price Trend
-                  </h3>
-                  {result.chartData?.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={320}>
-                      <AreaChart data={result.chartData}>
-                        <defs>
-                          <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#818CF8" stopOpacity={0.35} />
-                            <stop offset="95%" stopColor="#818CF8" stopOpacity={0} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" vertical={false} />
-                        <XAxis dataKey="date" stroke="#525252" fontSize={12} tickMargin={12}
-                          tickFormatter={(v) => v.split('-').slice(1).join('/')}
-                          axisLine={false} tickLine={false} />
-                        <YAxis domain={['auto', 'auto']} stroke="#525252" fontSize={12}
-                          tickFormatter={(v) => `$${v}`} axisLine={false} tickLine={false} tickMargin={12} />
-                        <Tooltip
-                          contentStyle={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '14px' }}
-                          itemStyle={{ color: '#fff', fontWeight: 'bold' }}
-                          labelStyle={{ color: '#737373' }}
-                        />
-                        <Area type="monotone" dataKey="price" stroke="#818CF8" strokeWidth={3}
-                          fill="url(#grad)" activeDot={{ r: 6, fill: '#fff', stroke: '#818CF8', strokeWidth: 3 }} />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="flex items-center justify-center h-[320px] text-neutral-600">
-                      Historical data unavailable for this ticker.
-                    </div>
-                  )}
-                </div>
-
-                {/* AI Reasoning */}
-                <div className="md:col-span-1 bg-indigo-950/20 border border-indigo-500/20 p-8 rounded-3xl flex flex-col relative overflow-hidden backdrop-blur-xl">
-                  <div className="absolute inset-0 bg-gradient-to-b from-indigo-500/5 to-transparent pointer-events-none" />
-                  <div className="flex items-center gap-3 mb-6 relative z-10">
-                    <div className="p-2.5 bg-indigo-500/20 rounded-xl border border-indigo-500/20 text-indigo-400">
-                      <CheckCircle2 className="w-5 h-5" />
-                    </div>
-                    <h3 className="text-xl font-bold text-white">AI Synthesis</h3>
-                  </div>
-                  <p className="text-neutral-300 leading-relaxed text-[1.05rem] font-light relative z-10">
-                    {result.reasoning}
-                  </p>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
 
       {/* ── Footer ───────────────────────────────────────────────── */}
@@ -629,8 +489,7 @@ export default function Home() {
           <div className="flex flex-wrap justify-center gap-8 text-sm text-neutral-500">
             <Link href="/market" className="hover:text-white transition-colors">Market</Link>
             <Link href="/dashboard" className="hover:text-white transition-colors">Dashboard</Link>
-            <Link href="/login" className="hover:text-white transition-colors">Sign In</Link>
-            <span className="hover:text-white transition-colors cursor-pointer">Privacy</span>
+            <Link href="/about" className="hover:text-white transition-colors">About</Link>
           </div>
           <p className="text-sm text-neutral-600">© 2026 NexusAI. All rights reserved.</p>
         </div>

@@ -53,7 +53,7 @@ export default function DashboardPage() {
             <Link href="/" className="hover:text-white transition-colors">Research</Link>
             <Link href="/market" className="hover:text-white transition-colors">Market</Link>
             <Link href="/dashboard" className="text-white">Dashboard</Link>
-            <Link href="/login" className="px-4 py-2 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white transition-colors">Sign In</Link>
+            <Link href="/about" className="hover:text-white transition-colors">About</Link>
           </div>
         </div>
       </nav>
@@ -179,13 +179,13 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Auth CTA */}
+            {/* About CTA */}
             <div className="p-6 rounded-3xl bg-gradient-to-br from-indigo-900/20 to-purple-900/20 border border-indigo-500/10 backdrop-blur-xl text-center">
               <TrendingUp className="w-8 h-8 text-indigo-400 mx-auto mb-3" />
-              <p className="text-white font-bold mb-1">Save your watchlist</p>
-              <p className="text-neutral-500 text-sm mb-4">Sign in with Google to persist your data across sessions.</p>
-              <Link href="/login" className="inline-block w-full py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition-colors">
-                Sign in with Google
+              <p className="text-white font-bold mb-1">How it works</p>
+              <p className="text-neutral-500 text-sm mb-4">Learn about the LangGraph agent architecture and tech stack powering NexusAI.</p>
+              <Link href="/about" className="inline-block w-full py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition-colors">
+                View Architecture
               </Link>
             </div>
           </div>
