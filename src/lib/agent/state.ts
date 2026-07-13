@@ -55,6 +55,25 @@ export interface ResearchState {
   chartData?: Array<{ date: string; price: number }>;
   newsItems?: NewsItem[];
   peers?: PeerStock[];
+  assetProfile?: {
+    summary: string;
+    city: string;
+    country: string;
+    website: string;
+    employees: number;
+  };
+  financialHistory?: Array<{
+    year: string;
+    revenue: number;
+    netIncome: number;
+  }>;
+  recommendationTrend?: {
+    strongBuy: number;
+    buy: number;
+    hold: number;
+    sell: number;
+    strongSell: number;
+  };
 
   finalRecommendation?: {
     recommendation: "INVEST" | "PASS";
@@ -73,5 +92,8 @@ export const stateChannels: StateGraphArgs<ResearchState>["channels"] = {
   chartData: null,
   newsItems: null,
   peers: null,
+  assetProfile: null,
+  financialHistory: null,
+  recommendationTrend: null,
   finalRecommendation: null,
 };

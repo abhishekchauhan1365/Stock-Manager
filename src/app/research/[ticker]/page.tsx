@@ -4,7 +4,7 @@ import { use, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, ReferenceLine,
+  ResponsiveContainer, ReferenceLine, BarChart, Bar, Legend,
 } from 'recharts';
 import {
   TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight,
@@ -151,6 +151,58 @@ const TargetPriceBar = ({ low, mean, high, current, currency }: { low: number; m
         )}
         {' '} the analyst consensus target mean ({fmtPrice(mean, currency)}).
       </p>
+    </div>
+  );
+};
+
+// ─── Analyst Recommendations breakdown ─────────────────────────────────────────
+const RecommendationBreakdown = ({ trend }: { trend: { strongBuy: number; buy: number; hold: number; sell: number; strongSell: number } }) => {
+  const total = trend.strongBuy + trend.buy + trend.hold + trend.sell + trend.strongSell;
+  if (total === 0) return null;
+
+  const pct = (val: number) => (val / total) * 100;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between text-xs text-neutral-500">
+        <span className="text-neutral-300 font-semibold">Analyst Recommendation Breakdown</span>
+        <span>{total} Analysts</span>
+      </div>
+
+      {/* Stacked Bar */}
+      <div className="h-5 bg-neutral-900 rounded-full overflow-hidden flex">
+        {trend.strongBuy > 0 && (
+          <div className="h-full bg-emerald-600 hover:opacity-90 transition-opacity" style={{ width: `${pct(trend.strongBuy)}%` }} title={`Strong Buy: ${trend.strongBuy}`} />
+        )}
+        {trend.buy > 0 && (
+          <div className="h-full bg-emerald-400 hover:opacity-90 transition-opacity" style={{ width: `${pct(trend.buy)}%` }} title={`Buy: ${trend.buy}`} />
+        )}
+        {trend.hold > 0 && (
+          <div className="h-full bg-neutral-600 hover:opacity-90 transition-opacity" style={{ width: `${pct(trend.hold)}%` }} title={`Hold: ${trend.hold}`} />
+        )}
+        {trend.sell > 0 && (
+          <div className="h-full bg-rose-400 hover:opacity-90 transition-opacity" style={{ width: `${pct(trend.sell)}%` }} title={`Sell: ${trend.sell}`} />
+        )}
+        {trend.strongSell > 0 && (
+          <div className="h-full bg-rose-600 hover:opacity-90 transition-opacity" style={{ width: `${pct(trend.strongSell)}%` }} title={`Strong Sell: ${trend.strongSell}`} />
+        )}
+      </div>
+
+      {/* Legend with counts */}
+      <div className="grid grid-cols-5 gap-1.5 text-center text-[10px] font-bold">
+        {[
+          { label: 'Strong Buy', count: trend.strongBuy, color: 'text-emerald-500' },
+          { label: 'Buy', count: trend.buy, color: 'text-emerald-400' },
+          { label: 'Hold', count: trend.hold, color: 'text-neutral-400' },
+          { label: 'Sell', count: trend.sell, color: 'text-rose-400' },
+          { label: 'Strong Sell', count: trend.strongSell, color: 'text-rose-600' },
+        ].map((x) => (
+          <div key={x.label} className="p-1 rounded bg-white/2">
+            <span className={`block font-extrabold ${x.color}`}>{x.count}</span>
+            <span className="text-neutral-500 font-medium block truncate mt-0.5">{x.label}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 };
@@ -406,6 +458,61 @@ export default function ResearchPage({ params }: { params: Promise<{ ticker: str
                   </div>
                 </div>
 
+                {/* Row: Annual Financials (2/3) + Analyst Recommendation breakdown (1/3) */}
+                {((data.financialHistory && data.financialHistory.length > 0) || data.recommendationTrend) && (
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Financials (2/3) */}
+                    <div className="lg:col-span-2 p-6 rounded-3xl border border-white/8 bg-white/[0.02] backdrop-blur-xl">
+                      <div className="flex items-center justify-between mb-6">
+                        <div>
+                          <h2 className="text-white font-bold text-lg flex items-center gap-2">
+                            <Activity className="w-5 h-5 text-indigo-400" /> Annual Financial History
+                          </h2>
+                          <p className="text-neutral-500 text-sm mt-1">Comparison of Revenue vs. Net Income over the last 3-4 years</p>
+                        </div>
+                      </div>
+
+                      {data.financialHistory && data.financialHistory.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={260}>
+                          <BarChart data={data.financialHistory} margin={{ top: 20, right: 0, left: 10, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#ffffff06" vertical={false} />
+                            <XAxis dataKey="year" stroke="#525252" fontSize={11} tickLine={false} />
+                            <YAxis stroke="#525252" fontSize={11} tickLine={false} 
+                              tickFormatter={v => {
+                                if (v >= 1e12) return `${(v / 1e12).toFixed(1)}T`;
+                                if (v >= 1e9)  return `${(v / 1e9).toFixed(0)}B`;
+                                if (v >= 1e6)  return `${(v / 1e6).toFixed(0)}M`;
+                                return v.toLocaleString();
+                              }} 
+                            />
+                            <Tooltip 
+                              contentStyle={{ background: '#0d0d18', borderColor: 'rgba(255,255,255,0.08)', borderRadius: '12px' }}
+                              formatter={(value: any, name: any) => [
+                                `${currency === 'INR' ? '₹' : '$'}${value.toLocaleString()}`, 
+                                name === 'revenue' ? 'Revenue' : 'Net Income'
+                              ]}
+                            />
+                            <Legend verticalAlign="top" height={36} iconType="circle" wrapperStyle={{ fontSize: '11px', color: '#a3a3a3' }} />
+                            <Bar dataKey="revenue" fill="#4f46e5" radius={[4, 4, 0, 0]} name="Revenue" />
+                            <Bar dataKey="netIncome" fill="#10b981" radius={[4, 4, 0, 0]} name="Net Income" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="flex items-center justify-center h-[260px] text-neutral-600 text-sm">No financial history available.</div>
+                      )}
+                    </div>
+
+                    {/* Recommendations (1/3) */}
+                    <div className="lg:col-span-1 p-6 rounded-3xl border border-white/8 bg-white/[0.02] backdrop-blur-xl flex flex-col justify-center">
+                      {data.recommendationTrend ? (
+                        <RecommendationBreakdown trend={data.recommendationTrend} />
+                      ) : (
+                        <div className="flex items-center justify-center text-neutral-600 text-sm">No recommendation trends available.</div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* AI Reasoning */}
                 <div className="p-7 rounded-3xl border border-indigo-500/15 bg-indigo-950/10 backdrop-blur-xl">
                   <div className="flex items-center gap-3 mb-4">
@@ -463,6 +570,40 @@ export default function ResearchPage({ params }: { params: Promise<{ ticker: str
                     </div>
                   )}
                 </div>
+
+                {/* Corporate Profile Card */}
+                {data.assetProfile && (
+                  <div className="p-6 rounded-3xl border border-white/8 bg-white/[0.02] backdrop-blur-xl space-y-4">
+                    <h2 className="text-white font-bold text-lg flex items-center gap-2 border-b border-white/5 pb-4">
+                      <Building2 className="w-5 h-5 text-indigo-400" /> About the Company
+                    </h2>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs text-neutral-400">
+                      <div>
+                        <p className="text-neutral-500 font-medium mb-1">Headquarters</p>
+                        <p className="text-white font-semibold">{data.assetProfile.city}, {data.assetProfile.country}</p>
+                      </div>
+                      <div>
+                        <p className="text-neutral-500 font-medium mb-1">Full-time Employees</p>
+                        <p className="text-white font-semibold">{data.assetProfile.employees ? data.assetProfile.employees.toLocaleString() : 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-neutral-500 font-medium mb-1">Sector</p>
+                        <p className="text-white font-semibold">{m?.sector || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-neutral-500 font-medium mb-1">Website</p>
+                        {data.assetProfile.website ? (
+                          <a href={data.assetProfile.website} target="_blank" rel="noopener noreferrer" className="text-indigo-400 font-semibold hover:underline flex items-center gap-1">
+                            Visit Site <ExternalLink className="w-3 h-3" />
+                          </a>
+                        ) : 'N/A'}
+                      </div>
+                    </div>
+                    <p className="text-neutral-300 text-sm leading-relaxed font-light mt-4 pt-4 border-t border-white/5">
+                      {data.assetProfile.summary}
+                    </p>
+                  </div>
+                )}
 
               </motion.div>
             )}

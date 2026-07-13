@@ -153,6 +153,47 @@ export const fetchResearchNode = async (state: ResearchState): Promise<Partial<R
         .filter(Boolean) as PeerStock[];
     }
 
+    // 8. Fetch detailed corporate profile and financials
+    let assetProfile = undefined;
+    let financialHistory = undefined;
+    let recommendationTrend = undefined;
+    try {
+      const summaryRes = await yahooFinance.quoteSummary(ticker, {
+        modules: ['assetProfile', 'incomeStatementHistory', 'recommendationTrend']
+      });
+
+      if (summaryRes.assetProfile) {
+        assetProfile = {
+          summary: summaryRes.assetProfile.longBusinessSummary || '',
+          city: summaryRes.assetProfile.city || '',
+          country: summaryRes.assetProfile.country || '',
+          website: summaryRes.assetProfile.website || '',
+          employees: summaryRes.assetProfile.fullTimeEmployees || 0,
+        };
+      }
+
+      if (summaryRes.incomeStatementHistory?.incomeStatementHistory) {
+        financialHistory = summaryRes.incomeStatementHistory.incomeStatementHistory.map((item: any) => ({
+          year: item.endDate ? new Date(item.endDate).getFullYear().toString() : 'N/A',
+          revenue: item.totalRevenue || 0,
+          netIncome: item.netIncome || 0,
+        })).reverse();
+      }
+
+      if (summaryRes.recommendationTrend?.trend?.[0]) {
+        const tr = summaryRes.recommendationTrend.trend[0];
+        recommendationTrend = {
+          strongBuy: tr.strongBuy || 0,
+          buy: tr.buy || 0,
+          hold: tr.hold || 0,
+          sell: tr.sell || 0,
+          strongSell: tr.strongSell || 0,
+        };
+      }
+    } catch (e) {
+      console.warn("Failed to fetch quoteSummary details", e);
+    }
+
     return {
       financialData: financials,
       recentNews: newsItems.map(n => n.title).join(" | ") || "No major recent news headlines found.",
@@ -161,6 +202,9 @@ export const fetchResearchNode = async (state: ResearchState): Promise<Partial<R
       chartData,
       newsItems,
       peers,
+      assetProfile,
+      financialHistory,
+      recommendationTrend,
     };
   } catch (error) {
     console.error("Yahoo Finance Error:", error);

@@ -37,6 +37,9 @@ export async function POST(req: Request) {
       chartData: result.chartData,
       newsItems: result.newsItems || [],
       peers: result.peers || [],
+      assetProfile: result.assetProfile || null,
+      financialHistory: result.financialHistory || [],
+      recommendationTrend: result.recommendationTrend || null,
     }, { status: 200 });
 
   } catch (error) {
